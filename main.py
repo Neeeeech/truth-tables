@@ -1,3 +1,6 @@
+pretty = {True: 'True ', False: 'False'}
+letters = {'P':0,'Q':1,'R':2}
+
 def T(p, q, r):
     return True
 
@@ -52,14 +55,43 @@ def XOR(func1, func2):
     return func
 
 
-def iterTable(func):
-    pretty = {True: 'True ', False: 'False'}
+def iterTable(func, arr):
+    has, ind = [], [iter0, iter1, iter2, iter3]
+    for i in ['P','Q','R']:
+        if i in arr:
+            has.append(i)
+    ind[len(has)](func,has)
+    print('\n')
+
+
+def iter0(func, vars):
+    print('RESULT')
+    print(func(True,True,True))
+
+def iter1(func,vars):
+    print(f'   {vars[0]}   :  RESULT')
+    inp = [True, True, True]
+    inp[letters[vars[0]]] = False
+    print(f' True  :  {func(True, True, True)}')
+    print(f' False :  {func(inp[0], inp[1], inp[2])}')
+
+def iter2(func, vars):
+    print(f'   {vars[0]}       {vars[1]}    :  RESULT')
+    inp = [True,True,True]
+    for i in range(2):
+        inp[letters[vars[1]]] = True
+        for j in range(2):
+            print(f' {pretty[inp[letters[vars[0]]]]}   {pretty[inp[letters[vars[1]]]]}  '
+                  f':  {func(inp[0], inp[1], inp[2])}')
+            inp[letters[vars[1]]] = False
+        inp[letters[vars[0]]] = False
+
+def iter3(func, vars):
     print('   P       Q       R    :  RESULT')
     for p in [True, False]:
         for q in [True, False]:
             for r in [True, False]:
                 print(f' {pretty[p]}   {pretty[q]}   {pretty[r]}  :  {func(p, q, r)}')
-    print('\n')
 
 
 wordKeys = {'and': ['&'],
@@ -68,7 +100,8 @@ wordKeys = {'and': ['&'],
             'true': ['T'],
             'false': ['F'],
             'not': ['!'],
-            'nor': ['!','V']}
+            'nor': ['!','V'],
+            'nand': ['!','&']}
 
 unopDict = {'P': P,
             'Q': Q,
@@ -118,22 +151,22 @@ def parse(inp):
                             i += 1
                     else:
                         print(f'Unrecognised character {input[i + 1]} after <, please try <- or <->')
-                        return []
+                        quit()
                 elif input[i] == '-':
                     if input[i + 1] == '>':
                         arr.append('I')
                         i += 1
                     else:
                         print(f'Unrecognised character {input[i + 1]} after -, please try ->')
-                        return []
+                        quit()
                 elif input[i] == ' ':
                     pass
                 else:
                     print(f'Unrecognised character {input[i]}')
-                    return []
+                    quit()
                 i += 1
         j += 1
-    print(arr)
+    print()
     return arr
 
 def parenth(arr):
@@ -199,7 +232,7 @@ def process(arr, biop2=False):
 
 
 print('\n\nType in a logic statement, with variables p,q,r and the following operations\n'
-      'Accepted Inputs - meaning'
+      'Accepted Inputs - meaning\n'
       'T, true       - truth / tautology\n'
       'F, false      - contradiction\n'
       '&, and        - and\n'
@@ -209,8 +242,11 @@ print('\n\nType in a logic statement, with variables p,q,r and the following ope
       '<-            - converse implies (implication but the other way round)\n'
       'if and only if \n'
       '<->           - if and only if\n'
-      '!V, nor       - nor'
-      '!&, nand      - not and')
+      '!V, nor       - nor\n'
+      '!&, nand      - not and\n'
+      'quit          - quit the program\n')
 
 while True:
-    iterTable(process(parse(input('? '))))
+    a = parse(input('? '))
+    b = process(a)
+    iterTable(b, a)
