@@ -62,6 +62,14 @@ def iterTable(func):
     print('\n')
 
 
+wordKeys = {'and': ['&'],
+            'or': ['V'],
+            'implies': ['I'],
+            'true': ['T'],
+            'false': ['F'],
+            'not': ['!'],
+            'nor': ['!','V']}
+
 unopDict = {'P': P,
             'Q': Q,
             'R': R,
@@ -75,37 +83,57 @@ biopDict = {'V': OR,
             'X': XOR}
 
 
-def parse(input):
-    if input == 'quit':
+def parse(inp):
+    if inp == 'quit':
         quit()
-    arr, i = [], 0
-    while i < len(input):
-        if input[i].upper() in ['V', '&', 'T', 'F', 'P', 'Q', 'R', '(', ')', '!','X']:
-            arr.append(input[i].upper())
-        elif input[i] == '<':
-            if input[i + 1] == '-':
-                if input[i + 2] == '>':
+    arr, inp, j = [], inp.split(' '), 0
+    while ' ' in inp:
+        inp.remove(' ')
+    for j in range(len(inp)):
+        input = inp[j]
+        if input.lower() in wordKeys.keys():
+            arr = arr + wordKeys[input.lower()]
+        elif input.lower() == 'if':
+            try:
+                if inp[j+1].lower() == 'and' and inp[j+2].lower() == 'only' and inp[j+3].lower() == 'if':
                     arr.append('X')
-                    i += 2
                 else:
-                    arr.append('C')
-                    i += 1
-            else:
-                print(f'Unrecognised character {input[i + 1]} after <, please try <- or <->')
-                return []
-        elif input[i] == '-':
-            if input[i + 1] == '>':
-                arr.append('I')
-                i += 1
-            else:
-                print(f'Unrecognised character {input[i + 1]} after -, please try ->')
-                return []
-        elif input[i] == ' ':
-            pass
+                    print("Unrecognised word order. Try 'if and only if'.")
+                    quit()
+            except IndexError:
+                print("Unrecognised word order. Try 'if and only if'.")
+                quit()
         else:
-            print(f'Unrecognised character {input[i]}')
-            return []
-        i += 1
+            i = 0
+            while i < len(input):
+                if input[i].upper() in ['V', '&', 'T', 'F', 'P', 'Q', 'R', '(', ')', '!','X']:
+                    arr.append(input[i].upper())
+                elif input[i] == '<':
+                    if input[i + 1] == '-':
+                        if input[i + 2] == '>':
+                            arr.append('X')
+                            i += 2
+                        else:
+                            arr.append('C')
+                            i += 1
+                    else:
+                        print(f'Unrecognised character {input[i + 1]} after <, please try <- or <->')
+                        return []
+                elif input[i] == '-':
+                    if input[i + 1] == '>':
+                        arr.append('I')
+                        i += 1
+                    else:
+                        print(f'Unrecognised character {input[i + 1]} after -, please try ->')
+                        return []
+                elif input[i] == ' ':
+                    pass
+                else:
+                    print(f'Unrecognised character {input[i]}')
+                    return []
+                i += 1
+        j += 1
+    print(arr)
     return arr
 
 def parenth(arr):
@@ -170,15 +198,19 @@ def process(arr, biop2=False):
                 quit()
 
 
-print('\n\nType in a logic statement, with variables p,q,r and the following operations:\n'
-      'T   - true\n'
-      'F   - false\n'
-      '&   - and\n'
-      'V   - or\n'
-      '!   - not (you can place this before an operation or variable to negate it eg. !V for nor)\n'
-      '->  - implies\n'
-      '<-  - converse implies (implication but the other way round)'
-      '<-> - if and only if\n')
+print('\n\nType in a logic statement, with variables p,q,r and the following operations\n'
+      'Accepted Inputs - meaning'
+      'T, true       - truth / tautology\n'
+      'F, false      - contradiction\n'
+      '&, and        - and\n'
+      'V, or         - or\n'
+      '!, not        - not (you can place this before an operation or variable to negate it eg. !V for nor)\n'
+      '->, implies   - implies\n'
+      '<-            - converse implies (implication but the other way round)\n'
+      'if and only if \n'
+      '<->           - if and only if\n'
+      '!V, nor       - nor'
+      '!&, nand      - not and')
 
 while True:
     iterTable(process(parse(input('? '))))
