@@ -118,6 +118,14 @@ def parenth(arr):
 
 def process(arr, biop2=False):
     nah = 0
+    while True:
+        temporary = arr.copy()
+        for i in range(len(arr)-1):
+            if arr[i] == '!' and arr[i+1] == '!':
+                arr.pop(i+1)
+                arr.pop(i)
+                break
+        if temporary == arr: break
     if arr.count('(') != arr.count(')'):
         print('Unequal amounts ( and ).')
         quit()
@@ -168,7 +176,6 @@ print('\n\nType in a logic statement, with variables p,q,r and the following ope
       '&   - and\n'
       'V   - or\n'
       '!   - not (you can place this before an operation or variable to negate it eg. !V for nor)\n'
-      '      note: double negatives not yet supported\n'
       '->  - implies\n'
       '<-  - converse implies (implication but the other way round)'
       '<-> - if and only if\n')
