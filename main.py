@@ -24,7 +24,11 @@ biopDict = {'V': OR,
             '&': AND,
             'I': IMPLIES,
             'C': CIMPLIES,
-            'X': XOR}
+            'X': XOR,
+            '↔': XOR,
+            '→': IMPLIES,
+            '∨': OR,
+            '∧': AND}
 
 def unopInit(vars):
     global unopDict
@@ -84,8 +88,10 @@ def parse(inp):
         else:
             i = 0
             while i < len(word):
-                if word[i].upper() in ['V', '&', '(', ')', '!', 'X'] or word[i].upper() in unopDict.keys():
+                if word[i].upper() in ['(', ')', '!'] + list(unopDict.keys()) + list(biopDict.keys()):
                     arr.append(word[i].upper())
+                elif word[i] == '~':
+                    arr.append('!')
                 elif word[i] == '<':
                     if word[i + 1] == '-':
                         try:
@@ -186,19 +192,19 @@ def process(arr, biop2=False):
 print("\n\nWhen prompted 'vars?' please define one-letter variable names separated by spaces\n"
       "When prompted '?' type in a logic statement, with defined variables and following operations:\n"
       'Accepted Inputs - meaning\n'
-      'T, true       - truth / tautology\n'
-      'F, false      - contradiction\n'
-      '&, and        - and\n'
-      'V, or         - or\n'
-      '!, not        - not (you can place this before an operation or variable to negate it eg. !V for nor)\n'
-      '->, implies   - implies\n'
-      '<-            - converse implies (implication but the other way round)\n'
+      'T, true        - truth / tautology\n'
+      'F, false       - contradiction\n'
+      '&, ∧, and      - and\n'
+      'V, ∨, or       - or\n'
+      '!, ~, not      - not (you can place this before an operation or variable to negate it eg. !V for nor)\n'
+      '->, →, implies - implies\n'
+      '<-             - converse implies (implication but the other way round)\n'
       'if and only if \n'
-      '<->, xor      - if and only if\n'
-      '!V, nor       - nor\n'
-      '!&, nand      - not and\n'
-      'redef         - redefine variable names\n'
-      'quit          - quit the program\n')
+      '<->, ↔, xor    - if and only if\n'
+      '!V, nor        - nor\n'
+      '!&, nand       - not and\n'
+      'redef          - redefine variable names\n'
+      'quit           - quit the program\n')
 
 if __name__ == '__main__':
     unopInit(input('vars? ').split())
