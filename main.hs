@@ -1,8 +1,11 @@
+-- exercises I used for testing taken from https://www.logicmatters.net/wp-content/uploads/2020/06/Exercises_solutions_12.pdf
+
 -- valid inputs (words are backwards bc when parsing it's easier to add to front rather than back)
 validWords :: [Char] -> Char
 validWords "T" = 'T'
 validWords "&" = '&'
 validWords "F" = 'F'
+validWords "v" = 'v'
 validWords "V" = 'v'
 validWords "~" = '!'
 validWords ">-" = '→'
@@ -49,6 +52,8 @@ process all@('(':xs) inputs
     | checkParAll xs 1 = process (init xs) inputs
     | otherwise        = giveBiOp biOp (process phrase1 inputs) (process phrase2 inputs)
     where [phrase1, biOp, phrase2] = splitBiOp all 0
+-- checks for double negatives
+process ('!':'!':xs) inputs = process xs inputs
 -- makes sure a ! only applies to !x, otherwise lets splitBiOp process it
 process ['!',x] inputs = not $ process [x] inputs
 process all@('!':'(':xs) inputs
@@ -80,8 +85,7 @@ giveBiOp _ = error "unrecognised binary op"
 -- takes string with form "phrase1 biOp phrase2" and splits into ["phrase1", "biOp", "phrase2"]
 splitBiOp :: [Char] -> Int -> [[Char]]
 -- first deals with parentheses
-splitBiOp ('(':xs) 0 = splitBiOp xs 1
-splitBiOp (')':xs) 1 = "":splitBiOp xs 0
+splitBiOp (')':xs) 1 = ")":splitBiOp xs 0
 splitBiOp ('(':xs) n = addToHStr '(' $ splitBiOp xs (n+1)
 splitBiOp (')':xs) n = addToHStr ')' $ splitBiOp xs (n-1)
 -- makes sure a ! sticks to the next bits no matter what
@@ -106,3 +110,7 @@ predTable :: Int -> [[Bool]]
 predTable 1 = [[True], [False]]
 predTable n = map (True:) prevPredTable ++ map (False:) prevPredTable
     where prevPredTable = predTable (n-1)
+
+-- gives a truthtable given the number of vars (up to 4) and the sentence
+tableFromSentence :: Int -> [Char] -> [Bool]
+tableFromSentence n sentence = truthTable n $ process $ parse sentence
