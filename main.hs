@@ -37,3 +37,13 @@ splitBiOp [] _ = []
 addToHStr :: Char -> [[Char]] -> [[Char]]
 addToHStr x (y:ys) = (x:y) : ys
 addToHStr x [] = [[x]]
+
+-- gives a truth table for n vars
+truthTable :: Int -> ([Bool] -> Bool) -> [Bool]
+truthTable n f = map f $ predTable n
+
+-- gives the combination of Bools for n vars
+predTable :: Int -> [[Bool]]
+predTable 1 = [[True], [False]]
+predTable n = map (True:) prevPredTable ++ map (False:) prevPredTable
+    where prevPredTable = predTable (n-1)
