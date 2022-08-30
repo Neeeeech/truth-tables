@@ -1,9 +1,47 @@
+-- valid inputs (words are backwards bc when parsing it's easier to add to front rather than back)
+validWords :: [Char] -> Char
+validWords "T" = 'T'
+validWords "&" = '&'
+validWords "F" = 'F'
+validWords "V" = 'v'
+validWords "~" = '!'
+validWords ">-" = '→'
+validWords "!" = '!'
+validWords "dna" = '&'
+validWords "ro" = 'v'
+validWords "eutr" = 'T'
+validWords "eslaf" = 'F'
+validWords "ton" = '!'
+validWords "seilpmi" = '→'
+validWords "p" = 'p'
+validWords "q" = 'q'
+validWords "r" = 'r'
+validWords "s" = 's'
+validWords "(" = '('
+validWords ")" = ')'
+validWords _ = ' '
+
+parseInner :: [Char] -> [Char] -> [Char]
+parseInner (x:xs) acc
+    | x == ' '       = parseInner xs acc
+    | nextSym == ' ' = parseInner xs (x:acc)
+    | otherwise      = nextSym : parseInner xs []
+    where nextSym = validWords (x:acc)
+parseInner [] _ = []
+
+parse :: [Char] -> [Char]
+parse all
+    | output == "" = error "Something's wrong, empty string returned"
+    | otherwise    = output
+    where output = parseInner all []
+
 -- assume given a sentence in good form, returns value given arguemnts in [Bool]
 process :: [Char] -> [Bool] -> Bool
 -- base cases
 process "p" inputs = head inputs
 process "q" inputs = inputs !! 1
 process "r" inputs = inputs !! 2
+process "s" inputs = inputs !! 3
 process "T" _ = True
 process "F" _ = False
 -- makes sure a ! only applies to !x, otherwise lets splitBiOp process it
@@ -47,3 +85,4 @@ predTable :: Int -> [[Bool]]
 predTable 1 = [[True], [False]]
 predTable n = map (True:) prevPredTable ++ map (False:) prevPredTable
     where prevPredTable = predTable (n-1)
+
