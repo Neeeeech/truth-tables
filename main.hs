@@ -44,10 +44,31 @@ process "r" inputs = inputs !! 2
 process "s" inputs = inputs !! 3
 process "T" _ = True
 process "F" _ = False
+-- checks if the whole thing is encased in a big bracket; if so, removes it
+process all@('(':xs) inputs
+    | checkParAll xs 1 = process (init xs) inputs
+    | otherwise        = giveBiOp biOp (process phrase1 inputs) (process phrase2 inputs)
+    where [phrase1, biOp, phrase2] = splitBiOp all 0
 -- makes sure a ! only applies to !x, otherwise lets splitBiOp process it
 process ['!',x] inputs = not $ process [x] inputs
+process all@('!':'(':xs) inputs
+    | checkParAll xs 1 = not $ process ('(':xs) inputs
+    | otherwise        = giveBiOp biOp (process phrase1 inputs) (process phrase2 inputs)
+    where [phrase1, biOp, phrase2] = splitBiOp all 0
+-- at this point it must be a binary operation, so splits it into its componenets
 process all inputs = giveBiOp biOp (process phrase1 inputs) (process phrase2 inputs)
     where [phrase1, biOp, phrase2] = splitBiOp all 0
+
+-- called when '(' at the beginning of string
+-- check to see if the whole string is bracketed
+-- pass in string without the first '(' and n=1
+checkParAll :: [Char] -> Int -> Bool
+checkParAll [] 0 = True
+checkParAll [] _ = error "You've bracketed something wrong"
+checkParAll _ 0 = False
+checkParAll ('(':xs) n = checkParAll xs (n+1)
+checkParAll (')':xs) n = checkParAll xs (n-1)
+checkParAll (x:xs) n = checkParAll xs n
 
 -- gives the corresponding binary operation
 giveBiOp :: [Char] -> Bool -> Bool -> Bool
@@ -85,4 +106,3 @@ predTable :: Int -> [[Bool]]
 predTable 1 = [[True], [False]]
 predTable n = map (True:) prevPredTable ++ map (False:) prevPredTable
     where prevPredTable = predTable (n-1)
-
