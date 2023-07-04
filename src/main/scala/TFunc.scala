@@ -1,5 +1,7 @@
+import scala.collection.mutable.Stack
 /** Truth function, generated either from composing smaller truth functions or from parsing a suitable string. */
-class TFunc(val f: (Array[Boolean]) => Boolean, private val senLets: Array[Char], private val inputLength: Int) {
+class TFunc(private val f: (Array[Boolean]) => Boolean, private val senLets: Array[Char]) {
+    val inputLength = senLets.length
     /** To directly access the function
       *
       * @param a input booleans
@@ -10,6 +12,11 @@ class TFunc(val f: (Array[Boolean]) => Boolean, private val senLets: Array[Char]
         f(a.toArray)
     }
 
+    def fromArray(a: Array[Boolean]) = {
+        require(a.length == inputLength, f"Expected ${inputLength} inputs but ${a.length} were given")
+        f(a)
+    }
+
     /** Generates truth table for the truth function
       *
       * @return truth table as a string to be printed
@@ -18,30 +25,159 @@ class TFunc(val f: (Array[Boolean]) => Boolean, private val senLets: Array[Char]
 }
 
 object TFunc {
-    class UnrecognisedCharException extends RuntimeException
-    private val operators = Array[Char]('T', 'F', '~', '&', '|', '→', '↔', '(', ')')
+    /*** Constants ***/
+    /** operator characters for reference */
+    private val operators = Array[Char]('~', '&', '|', '→', '↔', 'T', 'F', '(', ')')
+    /** array of operator class factory functions */
+    private val opClasses = Array[() => Operator](
+        () => new NotOp, () => new AndOp, () => new OrOp, () => new ImpliesOp, () => new IffOp
+    )
+    /** truth function that always returns true */
+    private val tautFunc = (_: Array[Boolean]) => true
+    /** truth function that always returns false */
+    private val contFunc = (_: Array[Boolean]) => false
 
+
+
+    /*** Classes ***/
+    class UnrecognisedCharException extends RuntimeException
+    class MissingCharException(s: String) extends RuntimeException(s)
+
+    /** Standard operators, with "compose" method to combine functions (if applicable) */
+    abstract class Operator { def >=[T <: Operator](that: T): Boolean = true }
+    class Bracket extends Operator
+
+    abstract class UnOp extends Operator {
+        def compose(f: Array[Boolean] => Boolean): Array[Boolean] => Boolean
+    }
+    class NotOp extends UnOp {
+        override def compose(f: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
+            (a: Array[Boolean]) => !f(a)
+        // not binds the strongest, and so does not need to override >=
+    }
+
+    abstract class BinOp extends Operator { 
+        def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean
+    }
+
+    class AndOp extends BinOp {
+        override def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
+            (a: Array[Boolean]) => f1(a) && f2(a)
+        
+        override def >=[T <: Operator](that: T): Boolean = that match {
+            case _: NotOp => false
+            case _ => true
+        }
+    }
+
+    class OrOp extends BinOp {
+        override def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
+            (a: Array[Boolean]) => f1(a) || f2(a)
+        
+        override def >=[T <: Operator](that: T): Boolean = that match {
+            case _: NotOp => false
+            case _ => true
+        }
+    }
+
+    class ImpliesOp extends BinOp {
+        override def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
+            (a: Array[Boolean]) => (!f1(a)) || f2(a)
+        
+        override def >=[T <: Operator](that: T): Boolean = that match {
+            case _: IffOp => true
+            case _: ImpliesOp => true
+            case _ => false
+        }
+    }
+
+    class IffOp extends BinOp {
+        override def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
+            (a: Array[Boolean]) => f1(a) == f2(a)
+        
+        override def >=[T <: Operator](that: T): Boolean = that match {
+            case _: IffOp => true
+            case _: ImpliesOp => true
+            case _ => false
+        }
+    }
+
+
+
+    /*** Methods ***/
     /** Constructor with string input
       *
       * @param s input string
       */
-    /*** FIX THIS HERE IT'S NOT RIGHT ***/
-    def apply(s: String) = { val (f, len) = parse(s); new TFunc(f, Array[Char](), len) }
+    def apply(s: String) = { 
+        val (cleanS, senLets) = clean(s)
+        val f = parse(cleanS, senLets)
+        new TFunc(f, senLets) 
+    }
 
     /** Turns propositional logic sentence into truth function.
-      *
+      * 
+      * uses a modified version of Dijkstra's Shunting-yard algorithm
+      * pre: assumes the input string s is clean
+      * 
       * @param s input string
       * @return (corresponding truth function, number of inputs)
       */
-    private def parse(s: String): ((Array[Boolean]) => Boolean, Int) = ???
+    private def parse(s: String, senLets: Array[Char]): (Array[Boolean]) => Boolean = {
+        val nInputs = senLets.length
+        val fnStack = new Stack[(Array[Boolean]) => Boolean]()
+        val opStack = new Stack[Operator]()
+        
+        // parsing through the whole string
+        for (c <- s) {
+            if (isSenLet(c)) { // Sentence Letter
+                fnStack.push(giveSLFunc(c, senLets))
+            } else if (c == 'T') { // Truth
+                fnStack.push(tautFunc)
+            } else if (c == 'F') { // Falsity
+                fnStack.push(contFunc)
+            } else if (c == '(') { // Open Bracket
+                opStack.push(new Bracket)
+            } else if (c == ')') { // Close Bracket
+                var working = true
+                while (working) {
+                    if (opStack.isEmpty) throw new MissingCharException(f"No '(' to match the ')'")
+                    opStack.head match {
+                        case _: Bracket  => { working = false; opStack.pop() }
+                        case o: Operator => applyTop(fnStack, opStack)
+                    }
+                }
+            } else if (operators.contains(c)) { // all other operators
+                val newOp: Operator = opClasses(operators.indexOf(c))()
+                if (opStack.nonEmpty && opStack.head >= newOp) {
+                    opStack.head match {
+                        case _: Bracket  => {}
+                        case o: Operator => applyTop(fnStack, opStack)
+                    }
+                }
+                opStack.push(newOp)
+            } else {
+                throw new UnrecognisedCharException
+            }
+        }
+
+        // cleaning up the whatever's left in the stacks
+        while (opStack.nonEmpty) opStack.head match {
+            case _: Bracket  => throw new MissingCharException("Missing a ')'")
+            case o: Operator => applyTop(fnStack, opStack)
+        }
+
+        if (fnStack.length != 1) throw new MissingCharException("Expecting more operators")
+        fnStack.head
+    }
 
     /** Cleans the string
       * i.e. removes spaces, turns -> and <-> to → and ↔) and returns the sentence letters
       * 
       * @param s input string
-      * @return (cleaned string, sentence letters
+      * @return (cleaned string, sentence letters)
       */
-    def clean(s: String): (String, Array[Char]) = {
+    private def clean(s: String): (String, Array[Char]) = {
         var (i, res, n, senLets, letterCount) = (0, List[Char](), s.length, List[Char](), 0)
 
         // check each token
@@ -58,7 +194,7 @@ object TFunc {
                 } else if (currToken == '<' && i < s.length - 2 && s(i+1) == '-' && s(i+2) == '>') {
                     // <->
                     res = '↔' :: res; i += 2
-                } else if (65 <= currToken.toInt && currToken.toInt <= 122) {
+                } else if (isSenLet(currToken)) {
                     // sentence letter
                     if (!senLets.contains(currToken)) senLets = currToken :: senLets
                     res = currToken :: res
@@ -71,5 +207,47 @@ object TFunc {
             i += 1
         }
         (res.reverse.mkString, senLets.reverse.toArray)
+    }
+
+    /** Checks whether a token is a sentence letter
+      *
+      * @param c the token
+      * @return whether c is a sentence letter
+      */
+    private def isSenLet(c: Char): Boolean = { val i = c.toInt; 65 <= i && i <= 122 && c != 'T' && c != 'F' }
+
+    /** Gives sentence letter c's corresponding truth function
+      *
+      * pre: c is in senLets
+      * 
+      * @param c the sentence letter
+      * @param senLets array of all the sentence letters in order
+      * @return truth function corresponding to c (i.e. returns ith input where senLets(i) == c)
+      */
+    private def giveSLFunc(c: Char, senLets: Array[Char]): (Array[Boolean]) => Boolean =
+        (a: Array[Boolean]) => a(senLets.indexOf(c))
+
+    /** Applies the top op of opStack to the appropriate functions in fnStack
+      * 
+      * NB does nothing if the top operator is a bracket
+      *
+      * @param fnStack function stack
+      * @param opStack operator stack
+      */
+    private def applyTop(fnStack: Stack[Array[Boolean] => Boolean], opStack: Stack[Operator]): Unit = opStack.head match {
+        case _: Bracket => {}
+        case o: UnOp => {
+            opStack.pop()
+            if (fnStack.isEmpty) 
+                throw new MissingCharException(f"${o} missing an argument")
+            fnStack.push(o.compose(fnStack.pop()))
+        }
+        case o: BinOp => {
+            opStack.pop()
+            if (fnStack.length < 2) 
+                throw new MissingCharException(f"${o} missing an argument")
+            val f2 = fnStack.pop()
+            fnStack.push(o.compose(fnStack.pop(), f2))
+        }
     }
 }
