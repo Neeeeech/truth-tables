@@ -1,7 +1,8 @@
 import scala.collection.mutable.Stack
 /** Truth function, generated either from composing smaller truth functions or from parsing a suitable string. */
 class TFunc(private val f: (Array[Boolean]) => Boolean, private val senLets: Array[Char], resStr: String) {
-    val inputLength = senLets.length
+    private val inputLength = senLets.length
+
     /** To directly access the function
       *
       * @param a input booleans
@@ -12,6 +13,11 @@ class TFunc(private val f: (Array[Boolean]) => Boolean, private val senLets: Arr
         f(a.toArray)
     }
 
+    /** the truth function, but taking an array of booleans as input
+      *
+      * @param a array of inputs
+      * @return result of applying inputs from a to the truth function
+      */
     def fromArray(a: Array[Boolean]) = {
         require(a.length == inputLength, f"Expected ${inputLength} inputs but ${a.length} were given")
         f(a)
@@ -46,29 +52,29 @@ object TFunc {
     class MissingCharException(s: String) extends RuntimeException(s)
 
     /** Standard operators, with "compose" method to combine functions (if applicable) */
-    abstract class Operator { def >=[T <: Operator](that: T): Boolean = true }
-    class Bracket extends Operator
+    private abstract class Operator { def >=[T <: Operator](that: T): Boolean = true }
+    private class Bracket extends Operator
 
-    abstract class UnOp extends Operator {
+    private abstract class UnOp extends Operator {
         def compose(f: Array[Boolean] => Boolean): Array[Boolean] => Boolean
 
         def composeName(s: String): String = f"${this}${s}"
     }
 
-    class NotOp extends UnOp {
+    private class NotOp extends UnOp {
         override def compose(f: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
             (a: Array[Boolean]) => !f(a)
         // not binds the strongest, and so does not need to override >=
         override def toString(): String = "¬"
     }
 
-    abstract class BinOp extends Operator { 
+    private abstract class BinOp extends Operator { 
         def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean
 
         def composeName(s1: String, s2: String): String = f"(${s1} ${this} ${s2})"
     }
 
-    class AndOp extends BinOp {
+    private class AndOp extends BinOp {
         override def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
             (a: Array[Boolean]) => f1(a) && f2(a)
         
@@ -80,7 +86,7 @@ object TFunc {
         override def toString(): String = "∧"
     }
 
-    class OrOp extends BinOp {
+    private class OrOp extends BinOp {
         override def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
             (a: Array[Boolean]) => f1(a) || f2(a)
         
@@ -92,7 +98,7 @@ object TFunc {
         override def toString(): String = "∨"
     }
 
-    class ImpliesOp extends BinOp {
+    private class ImpliesOp extends BinOp {
         override def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
             (a: Array[Boolean]) => (!f1(a)) || f2(a)
         
@@ -105,7 +111,7 @@ object TFunc {
         override def toString(): String = "→"
     }
 
-    class IffOp extends BinOp {
+    private class IffOp extends BinOp {
         override def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
             (a: Array[Boolean]) => f1(a) == f2(a)
         
