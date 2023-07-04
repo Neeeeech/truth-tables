@@ -1,6 +1,6 @@
 import scala.collection.mutable.Stack
 /** Truth function, generated either from composing smaller truth functions or from parsing a suitable string. */
-class TFunc(private val f: (Array[Boolean]) => Boolean, private val senLets: Array[Char]) {
+class TFunc(private val f: (Array[Boolean]) => Boolean, private val senLets: Array[Char], resStr: String) {
     val inputLength = senLets.length
     /** To directly access the function
       *
@@ -16,6 +16,8 @@ class TFunc(private val f: (Array[Boolean]) => Boolean, private val senLets: Arr
         require(a.length == inputLength, f"Expected ${inputLength} inputs but ${a.length} were given")
         f(a)
     }
+
+    override def toString(): String = resStr
 
     /** Generates truth table for the truth function
       *
@@ -49,15 +51,21 @@ object TFunc {
 
     abstract class UnOp extends Operator {
         def compose(f: Array[Boolean] => Boolean): Array[Boolean] => Boolean
+
+        def composeName(s: String): String = f"${this}${s}"
     }
+
     class NotOp extends UnOp {
         override def compose(f: Array[Boolean] => Boolean): Array[Boolean] => Boolean = 
             (a: Array[Boolean]) => !f(a)
         // not binds the strongest, and so does not need to override >=
+        override def toString(): String = "¬"
     }
 
     abstract class BinOp extends Operator { 
         def compose(f1: Array[Boolean] => Boolean, f2: Array[Boolean] => Boolean): Array[Boolean] => Boolean
+
+        def composeName(s1: String, s2: String): String = f"(${s1} ${this} ${s2})"
     }
 
     class AndOp extends BinOp {
@@ -68,6 +76,8 @@ object TFunc {
             case _: NotOp => false
             case _ => true
         }
+
+        override def toString(): String = "∧"
     }
 
     class OrOp extends BinOp {
@@ -78,6 +88,8 @@ object TFunc {
             case _: NotOp => false
             case _ => true
         }
+
+        override def toString(): String = "∨"
     }
 
     class ImpliesOp extends BinOp {
@@ -89,6 +101,8 @@ object TFunc {
             case _: ImpliesOp => true
             case _ => false
         }
+
+        override def toString(): String = "→"
     }
 
     class IffOp extends BinOp {
@@ -100,6 +114,8 @@ object TFunc {
             case _: ImpliesOp => true
             case _ => false
         }
+
+        override def toString(): String = "↔"
     }
 
 
@@ -111,8 +127,8 @@ object TFunc {
       */
     def apply(s: String) = { 
         val (cleanS, senLets) = clean(s)
-        val f = parse(cleanS, senLets)
-        new TFunc(f, senLets) 
+        val (f, resStr) = parse(cleanS, senLets)
+        new TFunc(f, senLets, resStr) 
     }
 
     /** Turns propositional logic sentence into truth function.
@@ -123,19 +139,19 @@ object TFunc {
       * @param s input string
       * @return (corresponding truth function, number of inputs)
       */
-    private def parse(s: String, senLets: Array[Char]): (Array[Boolean]) => Boolean = {
+    private def parse(s: String, senLets: Array[Char]): (Array[Boolean] => Boolean, String) = {
         val nInputs = senLets.length
-        val fnStack = new Stack[(Array[Boolean]) => Boolean]()
+        val fnStack = new Stack[(Array[Boolean] => Boolean, String)]()
         val opStack = new Stack[Operator]()
         
         // parsing through the whole string
         for (c <- s) {
             if (isSenLet(c)) { // Sentence Letter
-                fnStack.push(giveSLFunc(c, senLets))
+                fnStack.push((giveSLFunc(c, senLets), c.toString()))
             } else if (c == 'T') { // Truth
-                fnStack.push(tautFunc)
+                fnStack.push((tautFunc, "T"))
             } else if (c == 'F') { // Falsity
-                fnStack.push(contFunc)
+                fnStack.push((contFunc, "F"))
             } else if (c == '(') { // Open Bracket
                 opStack.push(new Bracket)
             } else if (c == ')') { // Close Bracket
@@ -234,20 +250,22 @@ object TFunc {
       * @param fnStack function stack
       * @param opStack operator stack
       */
-    private def applyTop(fnStack: Stack[Array[Boolean] => Boolean], opStack: Stack[Operator]): Unit = opStack.head match {
+    private def applyTop(fnStack: Stack[(Array[Boolean] => Boolean, String)], opStack: Stack[Operator]): Unit = opStack.head match {
         case _: Bracket => {}
         case o: UnOp => {
             opStack.pop()
             if (fnStack.isEmpty) 
                 throw new MissingCharException(f"${o} missing an argument")
-            fnStack.push(o.compose(fnStack.pop()))
+            val (fn, name) = fnStack.pop()
+            fnStack.push((o.compose(fn), o.composeName(name)))
         }
         case o: BinOp => {
             opStack.pop()
             if (fnStack.length < 2) 
                 throw new MissingCharException(f"${o} missing an argument")
-            val f2 = fnStack.pop()
-            fnStack.push(o.compose(fnStack.pop(), f2))
+            val (f2, s2) = fnStack.pop()
+            val (f1, s1) = fnStack.pop()
+            fnStack.push((o.compose(f1, f2), o.composeName(s1, s2)))
         }
     }
 }
